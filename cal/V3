@@ -1,14 +1,26 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
 from datetime import datetime
-import io
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import cm
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+
+# Imports optionnels avec fallback
+try:
+    import plotly.graph_objects as go
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+    st.warning("⚠️ Plotly non disponible - graphiques simplifiés")
+
+try:
+    import io
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
 
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(
@@ -20,7 +32,6 @@ st.set_page_config(
 # --- STYLE CSS AVEC CHARTE GRAPHIQUE ---
 st.markdown("""
     <style>
-    /* Couleurs de la charte */
     :root {
         --vert-enligt: #16C784;
         --anthracite: #1A1D26;
@@ -28,11 +39,8 @@ st.markdown("""
         --blanc: #FFFFFF;
     }
     
-    .main { 
-        background-color: #f9f9f9;
-    }
+    .main { background-color: #f9f9f9; }
     
-    /* Métriques personnalisées */
     .stMetric { 
         background-color: var(--blanc);
         padding: 20px;
@@ -41,7 +49,6 @@ st.markdown("""
         border-left: 4px solid var(--vert-enligt);
     }
     
-    /* Boutons */
     .stButton>button {
         background-color: var(--vert-enligt);
         color: white;
@@ -57,20 +64,8 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(22, 199, 132, 0.3);
     }
     
-    /* Sections */
-    .section-box {
-        background-color: var(--beige);
-        padding: 20px;
-        border-radius: 10px;
-        margin: 20px 0;
-    }
+    h1, h2, h3 { color: var(--anthracite); }
     
-    /* Titres */
-    h1, h2, h3 {
-        color: var(--anthracite);
-    }
-    
-    /* Cards */
     .info-card {
         background: linear-gradient(135deg, var(--vert-enligt) 0%, #13A86B 100%);
         color: white;
@@ -88,7 +83,6 @@ st.markdown("""
         text-align: center;
     }
     
-    /* Footer */
     footer {visibility: hidden;}
     .footer {
         position: fixed;
@@ -102,7 +96,6 @@ st.markdown("""
         border-top: 3px solid var(--vert-enligt);
         font-size: 14px;
     }
-    
     .footer a {
         color: var(--vert-enligt);
         text-decoration: none;
@@ -119,104 +112,89 @@ def format_euro(montant):
 
 def generer_pdf(config, resultats_mission):
     """Génère un PDF professionnel avec les résultats"""
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm)
-    story = []
-    styles = getSampleStyleSheet()
+    if not PDF_AVAILABLE:
+        return None
     
-    # Style personnalisé
-    titre_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.HexColor('#1A1D26'),
-        spaceAfter=30,
-        alignment=TA_CENTER
-    )
-    
-    sous_titre_style = ParagraphStyle(
-        'CustomSubtitle',
-        parent=styles['Heading2'],
-        fontSize=16,
-        textColor=colors.HexColor('#16C784'),
-        spaceAfter=12,
-        spaceBefore=20
-    )
-    
-    # En-tête
-    story.append(Paragraph("🚀 Simulation TJM & Marge", titre_style))
-    story.append(Paragraph(f"Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}", 
-                          styles['Normal']))
-    story.append(Spacer(1, 1*cm))
-    
-    # Configuration annuelle
-    story.append(Paragraph("Configuration Annuelle", sous_titre_style))
-    data_config = [
-        ['Paramètre', 'Valeur'],
-        ['Salaire brut annuel visé', format_euro(config['salaire'])],
-        ['Coefficient de charges/frais', f"{config['coefficient']:.2f}"],
-        ['Jours facturables par an', f"{config['jours']} jours"],
-        ['CA annuel nécessaire', format_euro(config['ca_annuel'])],
-        ['CJM Minimum (coût de revient)', format_euro(config['cjm'])]
-    ]
-    
-    table_config = Table(data_config, colWidths=[10*cm, 6*cm])
-    table_config.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#16C784')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#E8E3DB')),
-        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#E8E3DB')])
-    ]))
-    story.append(table_config)
-    story.append(Spacer(1, 1*cm))
-    
-    # Résultats de la mission
-    story.append(Paragraph("Résultats de la Mission", sous_titre_style))
-    data_mission = [
-        ['Indicateur', 'Valeur'],
-        ['TJM facturé', format_euro(resultats_mission['tjm'])],
-        ['Nombre de jours', f"{resultats_mission['jours']} jours"],
-        ['Montant total facturé', format_euro(resultats_mission['ca_mission'])],
-        ['Coût de revient', format_euro(resultats_mission['cout_revient'])],
-        ['Marge brute', format_euro(resultats_mission['marge_brute'])],
-        ['Marge nette', format_euro(resultats_mission['marge_nette'])],
-        ['Rentabilité', f"{resultats_mission['rentabilite']:.1f} %"],
-        ['Bénéfice par jour', format_euro(resultats_mission['benefice_jour'])]
-    ]
-    
-    table_mission = Table(data_mission, colWidths=[10*cm, 6*cm])
-    table_mission.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#16C784')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 12),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#E8E3DB')])
-    ]))
-    story.append(table_mission)
-    
-    # Footer
-    story.append(Spacer(1, 2*cm))
-    footer_style = ParagraphStyle(
-        'Footer',
-        parent=styles['Normal'],
-        fontSize=10,
-        textColor=colors.grey,
-        alignment=TA_CENTER
-    )
-    story.append(Paragraph("Document généré par Simulateur TJM - Mickael.M", footer_style))
-    
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
+    try:
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2*cm, bottomMargin=2*cm)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        titre_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#1A1D26'),
+            spaceAfter=30,
+            alignment=TA_CENTER
+        )
+        
+        sous_titre_style = ParagraphStyle(
+            'CustomSubtitle',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor=colors.HexColor('#16C784'),
+            spaceAfter=12,
+            spaceBefore=20
+        )
+        
+        story.append(Paragraph("🚀 Simulation TJM & Marge", titre_style))
+        story.append(Paragraph(f"Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}", 
+                              styles['Normal']))
+        story.append(Spacer(1, 1*cm))
+        
+        story.append(Paragraph("Configuration Annuelle", sous_titre_style))
+        data_config = [
+            ['Paramètre', 'Valeur'],
+            ['Salaire brut annuel visé', format_euro(config['salaire'])],
+            ['Coefficient de charges/frais', f"{config['coefficient']:.2f}"],
+            ['Jours facturables par an', f"{config['jours']} jours"],
+            ['CA annuel nécessaire', format_euro(config['ca_annuel'])],
+            ['CJM Minimum', format_euro(config['cjm'])]
+        ]
+        
+        table_config = Table(data_config, colWidths=[10*cm, 6*cm])
+        table_config.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#16C784')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#E8E3DB')])
+        ]))
+        story.append(table_config)
+        story.append(Spacer(1, 1*cm))
+        
+        story.append(Paragraph("Résultats de la Mission", sous_titre_style))
+        data_mission = [
+            ['Indicateur', 'Valeur'],
+            ['TJM facturé', format_euro(resultats_mission['tjm'])],
+            ['Nombre de jours', f"{resultats_mission['jours']} jours"],
+            ['Montant total facturé', format_euro(resultats_mission['ca_mission'])],
+            ['Marge brute', format_euro(resultats_mission['marge_brute'])],
+            ['Marge nette', format_euro(resultats_mission['marge_nette'])],
+            ['Rentabilité', f"{resultats_mission['rentabilite']:.1f} %"]
+        ]
+        
+        table_mission = Table(data_mission, colWidths=[10*cm, 6*cm])
+        table_mission.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#16C784')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#E8E3DB')])
+        ]))
+        story.append(table_mission)
+        
+        doc.build(story)
+        buffer.seek(0)
+        return buffer
+    except Exception as e:
+        st.error(f"Erreur génération PDF: {e}")
+        return None
 
 def generer_texte_copie(config, resultats_mission):
     """Génère le texte formaté pour la copie"""
@@ -237,12 +215,24 @@ Mission simulée ({resultats_mission['jours']} jours) :
 • Marge brute : {format_euro(resultats_mission['marge_brute'])}
 • Marge nette : {format_euro(resultats_mission['marge_nette'])}
 • Rentabilité : {resultats_mission['rentabilite']:.1f} %
-• Bénéfice/jour : {format_euro(resultats_mission['benefice_jour'])}
 """
     return texte
 
 def creer_graphique_repartition(salaire_part, charges_part, marge_part):
     """Crée un graphique en camembert avec Plotly"""
+    if not PLOTLY_AVAILABLE:
+        # Fallback: afficher les données en tableau
+        df = pd.DataFrame({
+            'Catégorie': ['Salaire net équivalent', 'Charges & Frais', 'Marge nette'],
+            'Montant': [salaire_part, charges_part, marge_part],
+            'Part %': [
+                f"{salaire_part/(salaire_part+charges_part+marge_part)*100:.1f}%",
+                f"{charges_part/(salaire_part+charges_part+marge_part)*100:.1f}%",
+                f"{marge_part/(salaire_part+charges_part+marge_part)*100:.1f}%"
+            ]
+        })
+        return df
+    
     fig = go.Figure(data=[go.Pie(
         labels=['Salaire net équivalent', 'Charges & Frais', 'Marge nette (Profit)'],
         values=[salaire_part, charges_part, marge_part],
@@ -258,13 +248,12 @@ def creer_graphique_repartition(salaire_part, charges_part, marge_part):
             'text': 'Répartition du chiffre d\'affaires',
             'x': 0.5,
             'xanchor': 'center',
-            'font': {'size': 18, 'color': '#1A1D26', 'family': 'Arial'}
+            'font': {'size': 18, 'color': '#1A1D26'}
         },
         showlegend=True,
         height=400,
         paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(size=12, color='#1A1D26')
+        plot_bgcolor='rgba(0,0,0,0)'
     )
     
     return fig
@@ -274,7 +263,6 @@ with st.sidebar:
     st.header("⚙️ Configuration Annuelle")
     st.info("Ces paramètres définissent votre 'coût de revient' (CJM).")
     
-    # Mode de calcul
     mode_calcul = st.radio(
         "Mode de calcul",
         ["📊 Calculer mon TJM", "🎯 Définir un objectif de revenu"],
@@ -295,29 +283,29 @@ with st.sidebar:
                 "Revenu net mensuel souhaité (€)",
                 min_value=0, value=4000, step=100
             )
-            salaire_brut_cible = objectif_mensuel * 12 * 1.25  # Approximation brut
+            salaire_brut_cible = objectif_mensuel * 12 * 1.25
         else:
             salaire_brut_cible = st.number_input(
                 "Revenu net annuel souhaité (€)",
                 min_value=0, value=48000, step=1000
-            ) * 1.25  # Approximation brut
+            ) * 1.25
     
     coeff_charges = st.slider(
         "Coefficient de charges/frais",
         min_value=1.0, max_value=2.5, value=1.6, step=0.1,
-        help="1.6 signifie que pour 1€ de salaire, vous devez facturer 1.60€ pour couvrir URSSAF, mutuelle, frais, etc."
+        help="1.6 signifie que pour 1€ de salaire, vous devez facturer 1.60€"
     )
     
     jours_travailles = st.slider(
         "Jours facturables par an",
         100, 250, 216,
-        help="Moyenne après congés et temps administratif (218j est la médiane)."
+        help="Moyenne après congés et temps administratif"
     )
 
     st.divider()
     st.markdown("### 👨‍💻 À propos")
-    st.write("Cet outil est proposé gratuitement afin d'aider les futurs freelances à suivre et optimiser leur rentabilité.")
-    st.markdown("[🔗 LinkedIn](https://linkedin.com/in/votre-profil) | [🌐 Portfolio](https://votre-site.com)")
+    st.write("Outil gratuit pour optimiser votre rentabilité freelance.")
+    st.markdown("[🔗 LinkedIn](https://linkedin.com/in/votre-profil)")
 
 # --- CALCULS DE BASE ---
 ca_annuel_necessaire = salaire_brut_cible * coeff_charges
@@ -327,29 +315,23 @@ cjm_equilibre = ca_annuel_necessaire / jours_travailles if jours_travailles > 0 
 st.title("🚀 Simulateur de TJM & Marge")
 st.markdown("Calculez votre tarif idéal et la rentabilité de vos missions en temps réel.")
 
-# SECTION 1 : POINT D'ÉQUILIBRE
+# SECTION 1
 st.markdown("### 1. Votre Coût de revient (CJM)")
 col1, col2 = st.columns(2)
 with col1:
-    st.metric(
-        "CJM Minimum", 
-        f"{int(cjm_equilibre)} € HT", 
-        help="En dessous, vous n'atteignez pas votre objectif de salaire."
-    )
+    st.metric("CJM Minimum", f"{int(cjm_equilibre)} € HT")
 with col2:
     st.metric("CA Annuel Cible", format_euro(ca_annuel_necessaire))
 
-# Affichage du mode inversé
 if mode_calcul == "🎯 Définir un objectif de revenu":
-    st.success(f"💡 Pour atteindre votre objectif, vous devez facturer **{int(cjm_equilibre)} € HT par jour**")
+    st.success(f"💡 Pour atteindre votre objectif : **{int(cjm_equilibre)} € HT/jour**")
 
 st.divider()
 
-# SECTION 2 : SIMULATEUR DE MISSION
+# SECTION 2
 st.markdown("### 2. Simulation d'une mission")
 
-# Tabs pour différents modes
-tab1, tab2 = st.tabs(["💼 Simuler une mission", "🔄 Calcul inversé TJM → Revenu"])
+tab1, tab2 = st.tabs(["💼 Simuler une mission", "🔄 Calcul inversé"])
 
 with tab1:
     col_sim1, col_sim2 = st.columns(2)
@@ -365,134 +347,124 @@ with tab1:
         duree_mission = st.number_input(
             "Nombre de jours de la mission", 
             min_value=1, 
-            value=20,
-            step=1
+            value=20
         )
     
-    # Calculs mission
+    # Calculs
     ca_mission = tjm_propose * duree_mission
     cout_revient_mission = cjm_equilibre * duree_mission
     marge_brute_mission = ca_mission - cout_revient_mission
     
-    # Calcul de la marge nette (après déduction des charges réelles)
     charges_mission = ca_mission * (coeff_charges - 1) / coeff_charges
     salaire_mission = ca_mission / coeff_charges
     marge_nette_mission = ca_mission - charges_mission - salaire_mission
     
     rentabilite_mission = (marge_nette_mission / ca_mission * 100) if ca_mission > 0 else 0
-    benefice_jour = tjm_propose - cjm_equilibre
     
-    # Affichage des résultats détaillés
-    st.markdown("#### 💰 Résultats financiers détaillés")
+    st.markdown("#### 💰 Résultats détaillés")
     
-    # Cards comparaison
-    col_compare1, col_compare2 = st.columns(2)
+    col_c1, col_c2 = st.columns(2)
     
-    with col_compare1:
+    with col_c1:
         st.markdown(f"""
         <div class="comparison-card">
             <h4>💵 Ce que vous facturez</h4>
             <h2 style="color: #16C784;">{format_euro(ca_mission)}</h2>
-            <p style="color: #666;">Montant HT de la mission</p>
+            <p>Montant HT de la mission</p>
         </div>
         """, unsafe_allow_html=True)
     
-    with col_compare2:
+    with col_c2:
         st.markdown(f"""
         <div class="comparison-card">
             <h4>💰 Ce que vous gagnez</h4>
             <h2 style="color: #1A1D26;">{format_euro(salaire_mission)}</h2>
-            <p style="color: #666;">Salaire équivalent net</p>
+            <p>Salaire équivalent</p>
         </div>
         """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Métriques détaillées
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     m_col1.metric("Marge brute", format_euro(marge_brute_mission))
     m_col2.metric("Marge nette", format_euro(marge_nette_mission))
     m_col3.metric("Rentabilité", f"{rentabilite_mission:.1f} %")
-    m_col4.metric("Profit/jour", format_euro(benefice_jour))
+    m_col4.metric("Profit/jour", format_euro(tjm_propose - cjm_equilibre))
     
-    # Graphique de répartition
-    st.markdown("#### 📊 Répartition du chiffre d'affaires")
-    fig = creer_graphique_repartition(salaire_mission, charges_mission, marge_nette_mission)
-    st.plotly_chart(fig, use_container_width=True)
+    st.markdown("#### 📊 Répartition")
+    fig_or_df = creer_graphique_repartition(salaire_mission, charges_mission, marge_nette_mission)
     
-    # Alertes
-    if tjm_propose < cjm_equilibre:
-        st.error(f"⚠️ Attention : Votre TJM est inférieur à votre coût de revient ({int(cjm_equilibre)}€). Vous perdez de l'argent !")
-    elif rentabilite_mission > 25:
-        st.success("✨ Excellente marge ! Cette mission est très rentable.")
-    elif rentabilite_mission > 15:
-        st.info("👍 Bonne marge. Cette mission est rentable.")
+    if PLOTLY_AVAILABLE:
+        st.plotly_chart(fig_or_df, use_container_width=True)
     else:
-        st.warning("⚡ Marge correcte mais pourrait être optimisée.")
+        st.dataframe(fig_or_df, use_container_width=True)
     
-    # Boutons d'export
-    st.markdown("#### 📤 Exporter les résultats")
+    if tjm_propose < cjm_equilibre:
+        st.error(f"⚠️ TJM inférieur au coût de revient ({int(cjm_equilibre)}€)")
+    elif rentabilite_mission > 25:
+        st.success("✨ Excellente marge !")
+    elif rentabilite_mission > 15:
+        st.info("👍 Bonne marge")
+    
+    st.markdown("#### 📤 Exporter")
     col_btn1, col_btn2, col_btn3 = st.columns(3)
     
+    config_data = {
+        'salaire': salaire_brut_cible,
+        'coefficient': coeff_charges,
+        'jours': jours_travailles,
+        'ca_annuel': ca_annuel_necessaire,
+        'cjm': cjm_equilibre
+    }
+    
+    resultats_data = {
+        'tjm': tjm_propose,
+        'jours': duree_mission,
+        'ca_mission': ca_mission,
+        'marge_brute': marge_brute_mission,
+        'marge_nette': marge_nette_mission,
+        'rentabilite': rentabilite_mission
+    }
+    
     with col_btn1:
-        # Préparer les données pour le PDF
-        config_data = {
-            'salaire': salaire_brut_cible,
-            'coefficient': coeff_charges,
-            'jours': jours_travailles,
-            'ca_annuel': ca_annuel_necessaire,
-            'cjm': cjm_equilibre
-        }
-        
-        resultats_data = {
-            'tjm': tjm_propose,
-            'jours': duree_mission,
-            'ca_mission': ca_mission,
-            'cout_revient': cout_revient_mission,
-            'marge_brute': marge_brute_mission,
-            'marge_nette': marge_nette_mission,
-            'rentabilite': rentabilite_mission,
-            'benefice_jour': benefice_jour
-        }
-        
-        pdf_buffer = generer_pdf(config_data, resultats_data)
-        st.download_button(
-            label="📥 Télécharger PDF",
-            data=pdf_buffer,
-            file_name=f"simulation-tjm-{datetime.now().strftime('%Y%m%d')}.pdf",
-            mime="application/pdf"
-        )
+        if PDF_AVAILABLE:
+            pdf_buffer = generer_pdf(config_data, resultats_data)
+            if pdf_buffer:
+                st.download_button(
+                    "📥 PDF",
+                    data=pdf_buffer,
+                    file_name=f"tjm-{datetime.now().strftime('%Y%m%d')}.pdf",
+                    mime="application/pdf"
+                )
+        else:
+            st.info("PDF non disponible")
     
     with col_btn2:
-        texte_copie = generer_texte_copie(config_data, resultats_data)
+        texte = generer_texte_copie(config_data, resultats_data)
         st.download_button(
-            label="📋 Copier résultats",
-            data=texte_copie,
-            file_name="simulation-tjm.txt",
+            "📋 Texte",
+            data=texte,
+            file_name="simulation.txt",
             mime="text/plain"
         )
     
     with col_btn3:
-        # Export CSV
         df_export = pd.DataFrame([{
             'Date': datetime.now().strftime('%Y-%m-%d'),
             'TJM': tjm_propose,
-            'Jours': duree_mission,
-            'CA Mission': ca_mission,
-            'Marge Nette': marge_nette_mission,
-            'Rentabilité %': rentabilite_mission
+            'CA': ca_mission,
+            'Marge': marge_nette_mission,
+            'Rentabilité': rentabilite_mission
         }])
-        csv = df_export.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📊 Export CSV",
-            data=csv,
-            file_name=f"simulation-tjm-{datetime.now().strftime('%Y%m%d')}.csv",
+            "📊 CSV",
+            data=df_export.to_csv(index=False).encode('utf-8'),
+            file_name=f"tjm-{datetime.now().strftime('%Y%m%d')}.csv",
             mime="text/csv"
         )
 
 with tab2:
-    st.markdown("### 🔄 Calcul inversé : TJM → Revenu")
-    st.write("Découvrez combien vous gagnerez avec un TJM donné")
+    st.markdown("### 🔄 TJM → Revenu")
     
     tjm_test = st.slider(
         "TJM à tester (€ HT)",
@@ -502,44 +474,22 @@ with tab2:
         step=10
     )
     
-    # Calculs
     ca_annuel_test = tjm_test * jours_travailles
     revenu_net_annuel = ca_annuel_test / coeff_charges
     revenu_net_mensuel = revenu_net_annuel / 12
     
-    # Affichage
     st.markdown(f"""
     <div class="info-card">
         <h3>💡 Avec un TJM de {tjm_test} €/jour :</h3>
         <h2>Vous gagnerez {format_euro(revenu_net_mensuel)}/mois</h2>
-        <p style="font-size: 16px; opacity: 0.9;">Soit {format_euro(revenu_net_annuel)} net par an</p>
+        <p style="font-size: 16px;">Soit {format_euro(revenu_net_annuel)} net/an</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Comparaison avec l'objectif
-    if mode_calcul == "🎯 Définir un objectif de revenu":
-        diff = revenu_net_mensuel - (salaire_brut_cible / 12 / 1.25)
-        if diff > 0:
-            st.success(f"✅ Vous dépassez votre objectif de {format_euro(abs(diff))}/mois !")
-        elif diff < 0:
-            st.warning(f"⚠️ Vous êtes en dessous de votre objectif de {format_euro(abs(diff))}/mois")
-        else:
-            st.info("🎯 Vous atteignez exactement votre objectif !")
-    
-    # Détails du calcul
-    with st.expander("📐 Voir le détail du calcul"):
-        st.markdown(f"""
-        **Formules utilisées :**
-        - CA annuel = TJM × Jours facturables = {tjm_test} × {jours_travailles} = {format_euro(ca_annuel_test)}
-        - Revenu net annuel = CA / Coefficient = {format_euro(ca_annuel_test)} / {coeff_charges} = {format_euro(revenu_net_annuel)}
-        - Revenu net mensuel = Revenu annuel / 12 = {format_euro(revenu_net_annuel)} / 12 = {format_euro(revenu_net_mensuel)}
-        """)
 
-# FOOTER
 st.markdown(f"""
     <div class="footer">
         Outil gratuit proposé par <b>Mickael.M</b> • 
-        <a href="https://linkedin.com/in/votre-profil" target="_blank">LinkedIn</a> • 
-        <a href="https://votre-site.com" target="_blank">Portfolio</a>
+        <a href="https://linkedin.com/in/votre-profil">LinkedIn</a> • 
+        <a href="https://votre-site.com">Portfolio</a>
     </div>
     """, unsafe_allow_html=True)
