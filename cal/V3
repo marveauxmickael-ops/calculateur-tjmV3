@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+Simulateur TJM & Marge - Version Production
+Encoding: UTF-8
+"""
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -111,7 +117,7 @@ def format_euro(montant):
     return f"{int(montant):,} €".replace(",", " ")
 
 def generer_pdf(config, resultats_mission):
-    """Génère un PDF professionnel avec les résultats"""
+    """Genere un PDF professionnel avec les resultats"""
     if not PDF_AVAILABLE:
         return None
     
@@ -139,18 +145,18 @@ def generer_pdf(config, resultats_mission):
             spaceBefore=20
         )
         
-        story.append(Paragraph("🚀 Simulation TJM & Marge", titre_style))
-        story.append(Paragraph(f"Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}", 
+        story.append(Paragraph("Simulation TJM & Marge", titre_style))
+        story.append(Paragraph(f"Genere le {datetime.now().strftime('%d/%m/%Y a %H:%M')}", 
                               styles['Normal']))
         story.append(Spacer(1, 1*cm))
         
         story.append(Paragraph("Configuration Annuelle", sous_titre_style))
         data_config = [
-            ['Paramètre', 'Valeur'],
-            ['Salaire brut annuel visé', format_euro(config['salaire'])],
+            ['Parametre', 'Valeur'],
+            ['Salaire brut annuel vise', format_euro(config['salaire'])],
             ['Coefficient de charges/frais', f"{config['coefficient']:.2f}"],
             ['Jours facturables par an', f"{config['jours']} jours"],
-            ['CA annuel nécessaire', format_euro(config['ca_annuel'])],
+            ['CA annuel necessaire', format_euro(config['ca_annuel'])],
             ['CJM Minimum', format_euro(config['cjm'])]
         ]
         
@@ -167,15 +173,15 @@ def generer_pdf(config, resultats_mission):
         story.append(table_config)
         story.append(Spacer(1, 1*cm))
         
-        story.append(Paragraph("Résultats de la Mission", sous_titre_style))
+        story.append(Paragraph("Resultats de la Mission", sous_titre_style))
         data_mission = [
             ['Indicateur', 'Valeur'],
-            ['TJM facturé', format_euro(resultats_mission['tjm'])],
+            ['TJM facture', format_euro(resultats_mission['tjm'])],
             ['Nombre de jours', f"{resultats_mission['jours']} jours"],
-            ['Montant total facturé', format_euro(resultats_mission['ca_mission'])],
+            ['Montant total facture', format_euro(resultats_mission['ca_mission'])],
             ['Marge brute', format_euro(resultats_mission['marge_brute'])],
             ['Marge nette', format_euro(resultats_mission['marge_nette'])],
-            ['Rentabilité', f"{resultats_mission['rentabilite']:.1f} %"]
+            ['Rentabilite', f"{resultats_mission['rentabilite']:.1f} %"]
         ]
         
         table_mission = Table(data_mission, colWidths=[10*cm, 6*cm])
@@ -193,37 +199,37 @@ def generer_pdf(config, resultats_mission):
         buffer.seek(0)
         return buffer
     except Exception as e:
-        st.error(f"Erreur génération PDF: {e}")
+        st.error(f"Erreur generation PDF: {e}")
         return None
 
 def generer_texte_copie(config, resultats_mission):
-    """Génère le texte formaté pour la copie"""
-    texte = f"""📊 Simulation TJM & Marge
+    """Genere le texte formate pour la copie"""
+    texte = f"""Simulation TJM & Marge
 
 Configuration :
-• Salaire brut annuel : {format_euro(config['salaire'])}
-• Coefficient de charges : {config['coefficient']:.2f}
-• Jours facturables : {config['jours']} jours/an
+- Salaire brut annuel : {format_euro(config['salaire'])}
+- Coefficient de charges : {config['coefficient']:.2f}
+- Jours facturables : {config['jours']} jours/an
 
-Résultats :
-• CJM minimum : {format_euro(config['cjm'])}
-• CA annuel cible : {format_euro(config['ca_annuel'])}
+Resultats :
+- CJM minimum : {format_euro(config['cjm'])}
+- CA annuel cible : {format_euro(config['ca_annuel'])}
 
-Mission simulée ({resultats_mission['jours']} jours) :
-• TJM facturé : {format_euro(resultats_mission['tjm'])}
-• Montant total : {format_euro(resultats_mission['ca_mission'])}
-• Marge brute : {format_euro(resultats_mission['marge_brute'])}
-• Marge nette : {format_euro(resultats_mission['marge_nette'])}
-• Rentabilité : {resultats_mission['rentabilite']:.1f} %
+Mission simulee ({resultats_mission['jours']} jours) :
+- TJM facture : {format_euro(resultats_mission['tjm'])}
+- Montant total : {format_euro(resultats_mission['ca_mission'])}
+- Marge brute : {format_euro(resultats_mission['marge_brute'])}
+- Marge nette : {format_euro(resultats_mission['marge_nette'])}
+- Rentabilite : {resultats_mission['rentabilite']:.1f} %
 """
     return texte
 
 def creer_graphique_repartition(salaire_part, charges_part, marge_part):
-    """Crée un graphique en camembert avec Plotly"""
+    """Cree un graphique en camembert avec Plotly"""
     if not PLOTLY_AVAILABLE:
-        # Fallback: afficher les données en tableau
+        # Fallback: afficher les donnees en tableau
         df = pd.DataFrame({
-            'Catégorie': ['Salaire net équivalent', 'Charges & Frais', 'Marge nette'],
+            'Categorie': ['Salaire net equivalent', 'Charges & Frais', 'Marge nette'],
             'Montant': [salaire_part, charges_part, marge_part],
             'Part %': [
                 f"{salaire_part/(salaire_part+charges_part+marge_part)*100:.1f}%",
@@ -234,18 +240,18 @@ def creer_graphique_repartition(salaire_part, charges_part, marge_part):
         return df
     
     fig = go.Figure(data=[go.Pie(
-        labels=['Salaire net équivalent', 'Charges & Frais', 'Marge nette (Profit)'],
+        labels=['Salaire net equivalent', 'Charges & Frais', 'Marge nette (Profit)'],
         values=[salaire_part, charges_part, marge_part],
         marker=dict(colors=['#16C784', '#E8E3DB', '#1A1D26']),
         hole=0.4,
         textposition='auto',
-        texttemplate='%{label}<br>%{value:,.0f} €<br>(%{percent})',
-        hovertemplate='<b>%{label}</b><br>Montant: %{value:,.0f} €<br>Part: %{percent}<extra></extra>'
+        texttemplate='%{label}<br>%{value:,.0f} euros<br>(%{percent})',
+        hovertemplate='<b>%{label}</b><br>Montant: %{value:,.0f} euros<br>Part: %{percent}<extra></extra>'
     )])
     
     fig.update_layout(
         title={
-            'text': 'Répartition du chiffre d\'affaires',
+            'text': "Repartition du chiffre d'affaires",
             'x': 0.5,
             'xanchor': 'center',
             'font': {'size': 18, 'color': '#1A1D26'}
@@ -260,85 +266,85 @@ def creer_graphique_repartition(salaire_part, charges_part, marge_part):
 
 # --- SIDEBAR : CONFIGURATION ---
 with st.sidebar:
-    st.header("⚙️ Configuration Annuelle")
-    st.info("Ces paramètres définissent votre 'coût de revient' (CJM).")
+    st.header("Configuration Annuelle")
+    st.info("Ces parametres definissent votre 'cout de revient' (CJM).")
     
     mode_calcul = st.radio(
         "Mode de calcul",
-        ["📊 Calculer mon TJM", "🎯 Définir un objectif de revenu"],
+        ["Calculer mon TJM", "Definir un objectif de revenu"],
         help="Choisissez votre approche de calcul"
     )
     
-    if mode_calcul == "📊 Calculer mon TJM":
+    if mode_calcul == "Calculer mon TJM":
         salaire_brut_cible = st.number_input(
-            "Salaire brut annuel visé (€)", 
+            "Salaire brut annuel vise (euros)", 
             min_value=0, value=55000, step=1000
         )
     else:
-        st.markdown("### 🎯 Objectif de revenu")
-        type_objectif = st.radio("Définir par", ["Mensuel", "Annuel"])
+        st.markdown("### Objectif de revenu")
+        type_objectif = st.radio("Definir par", ["Mensuel", "Annuel"])
         
         if type_objectif == "Mensuel":
             objectif_mensuel = st.number_input(
-                "Revenu net mensuel souhaité (€)",
+                "Revenu net mensuel souhaite (euros)",
                 min_value=0, value=4000, step=100
             )
             salaire_brut_cible = objectif_mensuel * 12 * 1.25
         else:
             salaire_brut_cible = st.number_input(
-                "Revenu net annuel souhaité (€)",
+                "Revenu net annuel souhaite (euros)",
                 min_value=0, value=48000, step=1000
             ) * 1.25
     
     coeff_charges = st.slider(
         "Coefficient de charges/frais",
         min_value=1.0, max_value=2.5, value=1.6, step=0.1,
-        help="1.6 signifie que pour 1€ de salaire, vous devez facturer 1.60€"
+        help="1.6 signifie que pour 1 euro de salaire, vous devez facturer 1.60 euro"
     )
     
     jours_travailles = st.slider(
         "Jours facturables par an",
         100, 250, 216,
-        help="Moyenne après congés et temps administratif"
+        help="Moyenne apres conges et temps administratif"
     )
 
     st.divider()
-    st.markdown("### 👨‍💻 À propos")
-    st.write("Outil gratuit pour optimiser votre rentabilité freelance.")
-    st.markdown("[🔗 LinkedIn](https://linkedin.com/in/votre-profil)")
+    st.markdown("### A propos")
+    st.write("Outil gratuit pour optimiser votre rentabilite freelance.")
+    st.markdown("[LinkedIn](https://linkedin.com/in/votre-profil)")
 
 # --- CALCULS DE BASE ---
 ca_annuel_necessaire = salaire_brut_cible * coeff_charges
 cjm_equilibre = ca_annuel_necessaire / jours_travailles if jours_travailles > 0 else 0
 
 # --- INTERFACE PRINCIPALE ---
-st.title("🚀 Simulateur de TJM & Marge")
-st.markdown("Calculez votre tarif idéal et la rentabilité de vos missions en temps réel.")
+st.title("Simulateur de TJM & Marge")
+st.markdown("Calculez votre tarif ideal et la rentabilite de vos missions en temps reel.")
 
 # SECTION 1
-st.markdown("### 1. Votre Coût de revient (CJM)")
+st.markdown("### 1. Votre Cout de revient (CJM)")
 col1, col2 = st.columns(2)
 with col1:
-    st.metric("CJM Minimum", f"{int(cjm_equilibre)} € HT")
+    st.metric("CJM Minimum", f"{int(cjm_equilibre)} euros HT")
 with col2:
     st.metric("CA Annuel Cible", format_euro(ca_annuel_necessaire))
 
-if mode_calcul == "🎯 Définir un objectif de revenu":
-    st.success(f"💡 Pour atteindre votre objectif : **{int(cjm_equilibre)} € HT/jour**")
+if mode_calcul == "Definir un objectif de revenu":
+    st.success(f"Pour atteindre votre objectif : **{int(cjm_equilibre)} euros HT/jour**")
 
 st.divider()
 
 # SECTION 2
 st.markdown("### 2. Simulation d'une mission")
 
-tab1, tab2 = st.tabs(["💼 Simuler une mission", "🔄 Calcul inversé"])
+tab1, tab2 = st.tabs(["Simuler une mission", "Calcul inverse"])
 
 with tab1:
     col_sim1, col_sim2 = st.columns(2)
     
     with col_sim1:
         tjm_propose = st.number_input(
-            "TJM facturé au client (€ HT)", 
+            "TJM facture au client (euros HT)", 
             min_value=0, 
             value=int(cjm_equilibre),
             step=10
@@ -361,14 +367,14 @@ with tab1:
     
     rentabilite_mission = (marge_nette_mission / ca_mission * 100) if ca_mission > 0 else 0
     
-    st.markdown("#### 💰 Résultats détaillés")
+    st.markdown("#### Resultats detailles")
     
     col_c1, col_c2 = st.columns(2)
     
     with col_c1:
         st.markdown(f"""
         <div class="comparison-card">
-            <h4>💵 Ce que vous facturez</h4>
+            <h4>Ce que vous facturez</h4>
             <h2 style="color: #16C784;">{format_euro(ca_mission)}</h2>
             <p>Montant HT de la mission</p>
         </div>
@@ -377,9 +383,9 @@ with tab1:
     with col_c2:
         st.markdown(f"""
         <div class="comparison-card">
-            <h4>💰 Ce que vous gagnez</h4>
+            <h4>Ce que vous gagnez</h4>
             <h2 style="color: #1A1D26;">{format_euro(salaire_mission)}</h2>
-            <p>Salaire équivalent</p>
+            <p>Salaire equivalent</p>
         </div>
         """, unsafe_allow_html=True)
     
@@ -388,10 +394,10 @@ with tab1:
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     m_col1.metric("Marge brute", format_euro(marge_brute_mission))
     m_col2.metric("Marge nette", format_euro(marge_nette_mission))
-    m_col3.metric("Rentabilité", f"{rentabilite_mission:.1f} %")
+    m_col3.metric("Rentabilite", f"{rentabilite_mission:.1f} %")
     m_col4.metric("Profit/jour", format_euro(tjm_propose - cjm_equilibre))
     
-    st.markdown("#### 📊 Répartition")
+    st.markdown("#### Repartition")
     fig_or_df = creer_graphique_repartition(salaire_mission, charges_mission, marge_nette_mission)
     
     if PLOTLY_AVAILABLE:
@@ -400,13 +406,13 @@ with tab1:
         st.dataframe(fig_or_df, use_container_width=True)
     
     if tjm_propose < cjm_equilibre:
-        st.error(f"⚠️ TJM inférieur au coût de revient ({int(cjm_equilibre)}€)")
+        st.error(f"TJM inferieur au cout de revient ({int(cjm_equilibre)} euros)")
     elif rentabilite_mission > 25:
-        st.success("✨ Excellente marge !")
+        st.success("Excellente marge !")
     elif rentabilite_mission > 15:
-        st.info("👍 Bonne marge")
+        st.info("Bonne marge")
     
-    st.markdown("#### 📤 Exporter")
+    st.markdown("#### Exporter")
     col_btn1, col_btn2, col_btn3 = st.columns(3)
     
     config_data = {
@@ -431,7 +437,7 @@ with tab1:
             pdf_buffer = generer_pdf(config_data, resultats_data)
             if pdf_buffer:
                 st.download_button(
-                    "📥 PDF",
+                    "PDF",
                     data=pdf_buffer,
                     file_name=f"tjm-{datetime.now().strftime('%Y%m%d')}.pdf",
                     mime="application/pdf"
@@ -442,7 +448,7 @@ with tab1:
     with col_btn2:
         texte = generer_texte_copie(config_data, resultats_data)
         st.download_button(
-            "📋 Texte",
+            "Texte",
             data=texte,
             file_name="simulation.txt",
             mime="text/plain"
@@ -454,20 +460,20 @@ with tab1:
             'TJM': tjm_propose,
             'CA': ca_mission,
             'Marge': marge_nette_mission,
-            'Rentabilité': rentabilite_mission
+            'Rentabilite': rentabilite_mission
         }])
         st.download_button(
-            "📊 CSV",
+            "CSV",
             data=df_export.to_csv(index=False).encode('utf-8'),
             file_name=f"tjm-{datetime.now().strftime('%Y%m%d')}.csv",
             mime="text/csv"
         )
 
 with tab2:
-    st.markdown("### 🔄 TJM → Revenu")
+    st.markdown("### TJM vers Revenu")
     
     tjm_test = st.slider(
-        "TJM à tester (€ HT)",
+        "TJM a tester (euros HT)",
         min_value=int(cjm_equilibre * 0.5),
         max_value=int(cjm_equilibre * 2),
         value=int(cjm_equilibre),
@@ -480,16 +486,16 @@ with tab2:
     
     st.markdown(f"""
     <div class="info-card">
-        <h3>💡 Avec un TJM de {tjm_test} €/jour :</h3>
+        <h3>Avec un TJM de {tjm_test} euros/jour :</h3>
         <h2>Vous gagnerez {format_euro(revenu_net_mensuel)}/mois</h2>
         <p style="font-size: 16px;">Soit {format_euro(revenu_net_annuel)} net/an</p>
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown(f"""
+st.markdown("""
     <div class="footer">
-        Outil gratuit proposé par <b>Mickael.M</b> • 
-        <a href="https://linkedin.com/in/votre-profil">LinkedIn</a> • 
+        Outil gratuit propose par <b>Mickael.M</b> - 
+        <a href="https://linkedin.com/in/votre-profil">LinkedIn</a> - 
         <a href="https://votre-site.com">Portfolio</a>
     </div>
     """, unsafe_allow_html=True)
